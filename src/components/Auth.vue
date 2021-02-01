@@ -29,7 +29,7 @@
 <script>
 import Config from '@/config.js'
 import Utils from '@/utils.js'
-import { Client, PrivateKey } from 'dsteem'
+import { Client, PrivateKey } from '@hiveio/dhive'
 
 export default {
   name: 'Auth',
@@ -89,7 +89,9 @@ export default {
       }
 
       // Check if the user exists
-      var client = new Client(Config.RPC_NODE.url)
+      var client = new Client(Config.RPC_NODE.url, {
+        chainId: Config.NETWORK_ID
+      })
       const accounts = await client.database.getAccounts([_username])
       if (accounts.length === 0) {
         e = new Error('User @' + _username + ' does not exists')

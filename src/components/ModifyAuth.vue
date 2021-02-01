@@ -17,6 +17,7 @@
           </div>
         </div>
       </form>
+      <div>Created by @jga, for Hive modified by @fbslo</div>
       <div class="row">
         <div v-if="error" class="alert alert-danger">{{errorMsg}}</div>
         <div v-if="success" class="alert alert-success">{{successMsg}}</div>
@@ -56,8 +57,8 @@
                   <th scope="row" :class="{modified: value[2]==='modified', removed: value[2]==='removed'}">{{index+1}}</th>
                   <td :class="{modified: value[2]==='modified', removed: value[2]==='removed'}">{{value[0]}}</td>
                   <td :class="{modified: value[2]==='modified', removed: value[2]==='removed'}">{{value[1]}}</td>
-                  <td><button class="btn btn-secondary" @click="removeKey(roleForm.role, 'account_auths', index)">{{value[3]}}</button></td>                        
-                </tr>                
+                  <td><button class="btn btn-secondary" @click="removeKey(roleForm.role, 'account_auths', index)">{{value[3]}}</button></td>
+                </tr>
               </tbody>
               <tfoot>
                 <tr>
@@ -86,7 +87,7 @@
                   <label>New Threshold</label>
                   <input class="form-control ml-2" type="number" v-model="roleForm.input.threshold">
                   <button class="btn btn-primary ml-2" @click="modifyThreshold(roleForm.role)">Modify</button>
-                </div>              
+                </div>
               </form>
             </div>
           </div>
@@ -98,20 +99,20 @@
           <div class="row justify-content-end mt-2 mb-2">
             <button class="btn btn-primary" @click="copy">Copy</button>
           </div>
-          <div class="row mt-2 mb-2">          
+          <div class="row mt-2 mb-2">
             <textarea class="form-control" id="trx" rows="15" v-model="trx" disabled></textarea>
           </div>
           <div class="row mt-2 mb-5">
             <button class="btn btn-success btn-lg" @click="signTrx">Sign Transaction</button>
           </div>
         </div>
-      </div>        
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { Client, PrivateKey } from 'dsteem'
+import { Client, PrivateKey } from '@hiveio/dhive'
 import debounce from 'lodash.debounce'
 import Config from '@/config.js'
 import Utils from '@/utils.js'
@@ -125,7 +126,7 @@ export default {
       username: '',
       account: {},
       accountMod: {},
-      accountLoaded: false,      
+      accountLoaded: false,
       rolesForm: [
         {
           role: 'owner',
@@ -143,28 +144,30 @@ export default {
       error: false,
       errorMsg: '',
       success: false,
-      successMsg: '',      
+      successMsg: '',
     }
   },
-  
+
   methods: {
-    load () {        
+    load () {
       this.getAccount()
       .catch(function(error) {
         console.log(error)
       })
     },
-    
+
     async getAccount () {
-      var client = new Client(Config.RPC_NODE.url)
-      var inputUsername = this.inputUsername
+    var client = new Client(Config.RPC_NODE.url, {
+      chainId: Config.NETWORK_ID
+    })
+    var inputUsername = this.inputUsername
       const accounts = await client.database.getAccounts([inputUsername])
-      
+
       if (accounts.length === 0) {
         this.showError('@' + inputUsername + ' does not exists')
         return
       }
-      
+
       this.username = inputUsername
       this.account = accounts[0]
       this.accountMod = accounts[0]
@@ -186,10 +189,10 @@ export default {
         }
       }
 
-      this.hideError()      
+      this.hideError()
       this.accountLoaded = true
     },
-    
+
     idRole (role) {
       var id = 0
       switch (role){
@@ -207,16 +210,16 @@ export default {
       }
       return id
     },
-    
+
     addKey (role, type_auth) {
       var id = this.idRole(role)
       var key = this.rolesForm[id].input.key
       var weight = this.rolesForm[id].input.weight
-      this.accountMod[role][type_auth].push([key, Number(weight), 'modified', 'X'])      
+      this.accountMod[role][type_auth].push([key, Number(weight), 'modified', 'X'])
       this.rolesForm[id].input.key = ''
       this.rolesForm[id].input.weight = 1
     },
-    
+
     removeKey (role, type_auth, index) {
       var id = this.idRole(role)
       switch(this.accountMod[role][type_auth][index][2]){
@@ -232,24 +235,24 @@ export default {
           this.accountMod[role][type_auth].splice(index,1)
           break
         default:
-          break        
+          break
       }
     },
-    
+
     modifyThreshold (role) {
       var id = this.idRole(role)
       var threshold = this.rolesForm[id].input.threshold
       this.accountMod[role].weight_threshold = Number(threshold)
       this.accountMod[role].threshold.state = 'modified'
     },
-    
+
     undoThreshold (role) {
       var id = this.idRole(role)
       var threshold = this.accountMod[role].threshold.original
       this.accountMod[role].weight_threshold = threshold
       this.accountMod[role].threshold.state = 'original'
     },
-    
+
     generateTrx () {
       var op = [
         'account_update',
@@ -257,90 +260,90 @@ export default {
           account: this.username,
           memo_key: this.account.memo_key,
           json_metadata: this.account.json_metadata
-        } 
+        }
       ]
-      
+
       var auths = {owner:{key_auths:[],account_auths:[]},active:{key_auths:[],account_auths:[]},posting:{key_auths:[],account_auths:[]}}
-      
+
       var roles = ['owner','active','posting']
       for(var idr in roles){
         var role = roles[idr]
         var hasModifications = false
-        
-        var typeAuths = ['key_auths','account_auths'] 
+
+        var typeAuths = ['key_auths','account_auths']
         for(var ida in typeAuths){
           var typeAuth = typeAuths[ida]
-          
+
           for(var i in this.accountMod[role][typeAuth]){
-            
+
             // get key from accountMod
-            // example: 
+            // example:
             //   this.accountMod.posting.account_auths[2] = {'utopian-io',1,'modified','X'}
             //
             //   we only need {'utopian-io',1}
-                      
+
             var key_auth = [
               this.accountMod[role][typeAuth][i][0],
               this.accountMod[role][typeAuth][i][1]
             ]
-            var status = this.accountMod[role][typeAuth][i][2]  
-            
+            var status = this.accountMod[role][typeAuth][i][2]
+
             if(status === 'original' || status === 'modified') {
               auths[role][typeAuth].push(key_auth)
             }
-          
+
             if(status === 'removed' || status === 'modified') {
               hasModifications = true
-            }          
+            }
           }
         }
-        
+
         // get threshold
         auths[role].weight_threshold = this.accountMod[role].weight_threshold
         if(this.accountMod[role].threshold.state === 'modified') {
           hasModifications = true
         }
-        
+
         // Only include modifications in the Operation
         if(hasModifications) op[1][role] = auths[role]
       }
-      
+
       this.trx = JSON.stringify(op, null, 2)
       this.showTrx = true
     },
-    
+
     signTrx () {
       window.open(Config.URL_SIGN,'_blank')
     },
-    
+
     copy () {
       Utils.copyTextToClipboard(this.trx)
     },
-    
+
     showError (msg) {
       this.error = true
       this.errorMsg = msg
       this.hideSuccess()
     },
-    
+
     hideError () {
       this.error = false
       this.errorMsg = ''
     },
-    
+
     showSuccess (msg) {
       this.success = true
       this.successMsg = msg
       this.hideError()
     },
-    
+
     hideSuccess () {
       this.success = false
       this.successMsg = ''
     }
-    
+
   }
-  
+
 }
 </script>
 
@@ -351,7 +354,7 @@ export default {
   font-size: 0.8rem;
 }
 
-.publickey{    
+.publickey{
   font-family: monospace;
 }
 

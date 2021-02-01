@@ -1,6 +1,7 @@
 const RPC_NODE = { url: 'https://api.hive.blog' }
 const APP_VERSION = 'multisignature/0.0.1'
 const URL_SIGN = './#/sign'
+const NETWORK_ID='beeab0de00000000000000000000000000000000000000000000000000000000'
 
 const STEEM_ADDRESS_PREFIX = "STM";
 

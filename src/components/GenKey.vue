@@ -48,7 +48,7 @@
 </template>
 
 <script>
-import { Client, PrivateKey } from 'dsteem'
+import { Client, PrivateKey } from '@hiveio/dhive'
 import debounce from "lodash.debounce";
 
 import Config from "@/config.js";
